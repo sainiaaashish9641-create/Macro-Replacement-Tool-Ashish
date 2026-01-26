@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Macro Replacement Tool</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f3f4f6;
+  padding: 30px;
+}
+.container {
+  max-width: 900px;
+  margin: auto;
+  background: #fff;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+h2 { margin-top: 0; }
+
+.tabs {
+  display: flex;
+  margin-bottom: 15px;
+}
+.tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  background: #e5e7eb;
+  border-radius: 5px;
+  margin-right: 5px;
+  font-weight: bold;
+}
+.tab:last-child { margin-right: 0; }
+.tab.active {
+  background: #2563eb;
+  color: white;
+}
+
+label { font-weight: bold; }
+textarea {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0 15px;
+}
+button {
+  width: 100%;
+  padding: 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 15px;
+}
+button:hover { background: #1e40af; }
+button.secondary {
+  background: #10b981;
+}
+button.secondary:hover { background: #059669; }
+
+.small {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>🔁 Macro Replacement Tool</h2>
+
+<div class="tabs">
+  <div class="tab active" onclick="selectTab('NASB')">NASB</div>
+  <div class="tab" onclick="selectTab('ESBO')">ESBO</div>
+  <div class="tab" onclick="selectTab('APAC')">APAC</div>
+</div>
+
+<p class="small" id="tabInfo">
+NASB selected — Timestamp macro replacement only
+</p>
+
+<label>Input URLs / Trackers</label>
+<textarea id="input" rows="8"
+placeholder="https://tracker.com/imp?ts=[timestamp]"></textarea>
+
+<label>Output</label>
+<textarea id="output" rows="8" readonly></textarea>
+
+<button onclick="replaceMacros()">Replace Macro</button>
+<button class="secondary" onclick="downloadCSV()">Download CSV</button>
+</div>
+
+<script>
+let activeTab = "NASB";
+let results = [];
+
+function selectTab(tab) {
+  activeTab = tab;
+
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  event.target.classList.add("active");
+
+  const info = {
+    NASB: "NASB selected — Timestamp macro replacement only",
+    ESBO: "ESBO selected — Timestamp + GDPR macro replacement",
+    APAC: "APAC selected — Timestamp macro replacement only"
+  };
+  document.getElementById("tabInfo").innerText = info[tab];
+}
+
+function replaceMacros() {
+  const input = document.getElementById("input").value.trim();
+  if (!input) {
+    alert("Please enter URLs first.");
+    return;
+  }
+
+  const lines = input.split("\n").map(l => l.trim()).filter(Boolean);
+  results = [];
+
+  const output = lines.map(url => {
+    let replaced = url;
+
+    // Timestamp replacement (ALL tabs)
+    replaced = replaced.replace(/\[timestamp\]/gi, "__RANDOM_NUMBER__");
+
+    // GDPR replacement (ESBO only)
+    if (activeTab === "ESBO") {
+      replaced = replaced.replace(
+        /\[gdpr\]|\$\{gdpr\}|%%gdpr%%/gi,
+        "Testing"
+      );
+    }
+
+    results.push({ original: url, replaced });
+    return replaced;
+  });
+
+  document.getElementById("output").value = output.join("\n");
+}
+
+function downloadCSV() {
+  if (!results.length) {
+    alert("Replace macros before downloading CSV.");
+    return;
+  }
+
+  let csv = "Original URL,Replaced URL\n";
+  results.forEach(r => {
+    csv += `"${r.original}","${r.replaced}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `macro_replacement_${activeTab}.csv`;
+  link.click();
+}
+</script>
+
+</body>
+</html>
