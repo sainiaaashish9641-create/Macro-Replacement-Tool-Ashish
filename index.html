@@ -11,7 +11,7 @@ body {
   padding: 30px;
 }
 .container {
-  max-width: 900px;
+  max-width: 950px;
   margin: auto;
   background: #fff;
   padding: 25px;
@@ -45,7 +45,6 @@ textarea {
   width: 100%;
   padding: 10px;
   margin: 8px 0 15px;
-  font-size: 14px;
 }
 button {
   width: 100%;
@@ -56,19 +55,14 @@ button {
   border-radius: 5px;
   cursor: pointer;
   font-size: 15px;
-  margin-bottom: 10px;
 }
 button:hover { background: #1e40af; }
-button.secondary {
-  background: #10b981;
-}
-button.secondary:hover { background: #059669; }
+.secondary { background:#10b981; }
+.secondary:hover { background:#059669; }
+.copy { background:#f59e0b; }
+.copy:hover { background:#d97706; }
 
-.small {
-  font-size: 13px;
-  color: #555;
-  margin-bottom: 10px;
-}
+.small { font-size: 13px; color:#555; margin-bottom:10px; }
 </style>
 </head>
 
@@ -78,24 +72,24 @@ button.secondary:hover { background: #059669; }
 <h2>🔁 Macro Replacement Tool</h2>
 
 <div class="tabs">
-  <div class="tab active" onclick="selectTab('NASB', this)">NASB</div>
-  <div class="tab" onclick="selectTab('ESBO', this)">ESBO</div>
-  <div class="tab" onclick="selectTab('APAC', this)">APAC</div>
+  <div class="tab active" onclick="selectTab('NASB')">NASB</div>
+  <div class="tab" onclick="selectTab('ESBO')">ESBO</div>
+  <div class="tab" onclick="selectTab('APAC')">APAC</div>
 </div>
 
-<p class="small" id="tabInfo">
-NASB selected — Timestamp macro replacement only
-</p>
+<p class="small" id="tabInfo">NASB selected — Timestamp replacement only</p>
 
-<label>Input URLs / Trackers</label>
-<textarea id="input" rows="8"
-placeholder="https://tracker.com/imp?ts=[timestamp]"></textarea>
+<label>Bulk Upload (.txt)</label>
+<input type="file" id="fileInput" accept=".txt"><br><br>
+
+<label>Input URLs / Tags (One per line)</label>
+<textarea id="input" rows="8"></textarea>
 
 <label>Output</label>
 <textarea id="output" rows="8" readonly></textarea>
 
-<button onclick="replaceMacros()">Replace Macro</button>
-<button onclick="copyOutput()">Copy Output</button>
+<button onclick="replaceMacros()">Replace Macros</button>
+<button class="copy" onclick="copyOutput()">Copy Output</button>
 <button class="secondary" onclick="downloadCSV()">Download CSV</button>
 </div>
 
@@ -104,26 +98,34 @@ let activeTab = "NASB";
 let results = [];
 
 // TAB SWITCH
-function selectTab(tab, el) {
+function selectTab(tab) {
   activeTab = tab;
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  el.classList.add("active");
+  event.target.classList.add("active");
 
   const info = {
-    NASB: "NASB selected — Timestamp macro replacement only",
-    ESBO: "ESBO selected — Timestamp + GDPR auto append for DV/DCM",
-    APAC: "APAC selected — Timestamp macro replacement only"
+    NASB: "NASB selected — Timestamp replacement only",
+    ESBO: "ESBO selected — Timestamp + GDPR Injection",
+    APAC: "APAC selected — Timestamp replacement only"
   };
   document.getElementById("tabInfo").innerText = info[tab];
 }
 
-// MAIN MACRO ENGINE
+// BULK FILE LOAD
+document.getElementById("fileInput").addEventListener("change", function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById("input").value = e.target.result;
+  };
+  reader.readAsText(file);
+});
+
+// MAIN LOGIC
 function replaceMacros() {
   const input = document.getElementById("input").value.trim();
-  if (!input) {
-    alert("Please enter URLs first.");
-    return;
-  }
+  if (!input) return alert("Enter tags or upload file");
 
   const lines = input.split("\n").map(l => l.trim()).filter(Boolean);
   results = [];
@@ -131,23 +133,23 @@ function replaceMacros() {
   const output = lines.map(url => {
     let replaced = url;
 
-    // Timestamp / Cachebuster macros (ALL TABS)
-    replaced = replaced.replace(
-      /\[timestamp\]|\[CACHEBUSTER\]|\[INSERT_CACHEBREAKER_HERE\]|\[INSERT_MACRO\]|CacheBuster|\$\{timestamp\}|%%timestamp%%|%%CACHEBUSTER%%|\[cachebuster\]/gi,
-      "__RANDOM_NUMBER__"
-    );
+    // Timestamp replacement ALL tabs
+    replaced = replaced.replace(/\[timestamp\]|\$\{timestamp\}|%%timestamp%%/gi, "__RANDOM_NUMBER__");
 
-    // ESBO GDPR AUTO APPEND ONLY (NO Testing replacement)
+    // ESBO GDPR Injection Logic
     if (activeTab === "ESBO") {
-      const gdprString = "gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_755}";
+      const isDV = replaced.includes("tps.doubleverify.com/visit.jpg");
+      const isDCM = replaced.includes("ad.doubleclick.net/ddm/");
 
-      if (
-        replaced.includes("tps.doubleverify.com/visit.jpg") ||
-        replaced.includes("ad.doubleclick.net/ddm/")
-      ) {
-        if (!replaced.toLowerCase().includes("gdpr=")) {
-          replaced += (replaced.includes("?") ? "&" : "?") + gdprString;
-        }
+      let GDPR_STRING = "";
+      if (isDV) GDPR_STRING = "gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_126}";
+      if (isDCM) GDPR_STRING = "gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_755}";
+
+      // Insert ONLY if tfua exists and GDPR not already present
+      if (GDPR_STRING && !replaced.includes("gdpr=${GDPR}")) {
+        replaced = replaced.replace(/tfua=([^;]*)/i, (match, val) => {
+          return `tfua=${val};${GDPR_STRING}`;
+        });
       }
     }
 
@@ -160,32 +162,25 @@ function replaceMacros() {
 
 // COPY BUTTON
 function copyOutput() {
-  const out = document.getElementById("output");
-  if (!out.value) {
-    alert("No output to copy.");
-    return;
-  }
-  out.select();
+  const output = document.getElementById("output");
+  output.select();
   document.execCommand("copy");
-  alert("Copied to clipboard!");
+  alert("Copied to clipboard");
 }
 
 // CSV DOWNLOAD
 function downloadCSV() {
-  if (!results.length) {
-    alert("Replace macros before downloading CSV.");
-    return;
-  }
+  if (!results.length) return alert("Run replacement first");
 
-  let csv = "Original URL,Replaced URL\n";
+  let csv = "Original,Replaced\n";
   results.forEach(r => {
-    csv += `"${r.original.replace(/"/g,'""')}","${r.replaced.replace(/"/g,'""')}"\n`;
+    csv += `"${r.original}","${r.replaced}"\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `macro_replacement_${activeTab}.csv`;
+  link.download = `macro_${activeTab}.csv`;
   link.click();
 }
 </script>
