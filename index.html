@@ -30,4 +30,129 @@ button:hover { background: #1e40af; }
 <div class="tabs">
 <div class="tab active" onclick="selectTab(event,'NASB')">NASB</div>
 <div class="tab" onclick="selectTab(event,'ESBO')">ESBO</div>
-<div class="tab" onclick="
+<div class="tab" onclick="selectTab(event,'APAC')">APAC</div>
+</div>
+
+<p class="small" id="tabInfo">NASB selected — Cachebuster replacement only</p>
+
+<label>Input URLs / Tags (One per line)</label>
+<textarea id="input" rows="8"></textarea>
+
+<label>Output</label>
+<textarea id="output" rows="8" readonly></textarea>
+
+<button onclick="replaceMacros()">Replace Macros</button>
+<button class="copy" onclick="copyOutput()">Copy Output</button>
+<button class="secondary" onclick="downloadCSV()">Download CSV</button>
+</div>
+
+<script>
+let activeTab = "NASB";
+let results = [];
+
+// TAB SWITCH
+function selectTab(e, tab) {
+  activeTab = tab;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  e.target.classList.add("active");
+
+  const info = {
+    NASB: "NASB selected — Cachebuster replacement only",
+    ESBO: "ESBO selected — Cachebuster + GDPR rules",
+    APAC: "APAC selected — Cachebuster replacement only"
+  };
+  document.getElementById("tabInfo").innerText = info[tab];
+}
+
+// MAIN FUNCTION
+function replaceMacros() {
+  const input = document.getElementById("input").value.trim();
+  if (!input) return alert("Enter tags first");
+
+  const lines = input.split("\n").map(l => l.trim()).filter(Boolean);
+  results = [];
+
+  const output = lines.map(url => {
+    let replaced = url;
+
+    // ================= RANDOM NUMBER MACROS (ALL TABS) =================
+    const randomMacros = [
+      /\[CACHEBUSTER\]/gi,
+      /\[timestamp\]/gi,
+      /\$\{timestamp\}/gi,
+      /%%timestamp%%/gi,
+      /\[INSERT_CACHEBREAKER_HERE\]/gi,
+      /\[INSERT_CACHEBUSTER_HERE\]/gi,
+      /\[INSERT_MACRO\]/gi,
+      /\[CACHBUSTER\]/gi,
+      /\[CACHE_BREAKER\]/gi,
+      /\bCachebuster\b/gi,
+      /\bCacheBuster\b/gi
+    ];
+    randomMacros.forEach(r => replaced = replaced.replace(r, "__RANDOM_NUMBER__"));
+
+    // CacheBuster param
+    replaced = replaced.replace(/CacheBuster=[^&;]+/gi, "CacheBuster=__RANDOM_NUMBER__");
+
+    // ================= AdvertiserID RULE (GLOBAL) =================
+    replaced = replaced.replace(/AdvertiserID=[^&;]+/gi, "AdvertiserID=__DEVICE_UID__");
+
+    // ================= did=AdvertiserID RULE (NEW GLOBAL) =================
+    replaced = replaced.replace(/did=AdvertiserID/gi, "did=__DEVICE_UID__");
+
+    // ================= ESBO GDPR RULES =================
+    if (activeTab === "ESBO") {
+
+      // DoubleVerify visit.jpg → append at END with &
+      if (replaced.includes("tps.doubleverify.com/visit.jpg")) {
+        if (!replaced.includes("gdpr=${GDPR}")) {
+          replaced += "&gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_126}";
+        }
+      }
+
+      // DCM → insert after tfua= with ;
+      if (replaced.includes("ad.doubleclick.net/ddm/")) {
+        const gdprString = "gdpr=${GDPR};gdpr_consent=${GDPR_CONSENT_755}";
+        if (!replaced.includes("gdpr=${GDPR}")) {
+          replaced = replaced.replace(/tfua=([^;]*)/i, (match, val) => {
+            return `tfua=${val};${gdprString}`;
+          });
+        }
+      }
+    }
+
+    results.push({ original: url, replaced });
+    return replaced;
+  });
+
+  document.getElementById("output").value = output.join("\n");
+}
+
+// COPY BUTTON
+function copyOutput() {
+  const output = document.getElementById("output");
+  output.select();
+  document.execCommand("copy");
+  alert("Copied to clipboard");
+}
+
+// CSV EXPORT
+function downloadCSV() {
+  if (!results.length) return alert("Run replacement first");
+
+  let csv = "Original,Replaced\n";
+  results.forEach(r => {
+    const o = r.original.replace(/"/g,'""');
+    const rep = r.replaced.replace(/"/g,'""');
+    csv += `"${o}","${rep}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `macro_${activeTab}.csv`;
+  link.click();
+}
+</script>
+</body>
+</html>
