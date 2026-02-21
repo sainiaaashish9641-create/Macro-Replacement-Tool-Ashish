@@ -96,7 +96,7 @@ function replaceMacros() {
 
     // ================= DYNATA AdvertiserID RULE (ALL TABS) =================
     if (/dynata/i.test(replaced)) {
-      replaced = replaced.replace(/AdvertiserID=[^&;]+/gi, "AdvertiserID=__DEVICE_UID__");
+      replaced = replaced.replace(/AdvertiserID=[^&;]+/gi, "__DEVICE_UID__");
     }
 
     // ================= ESBO GDPR RULES =================
@@ -155,4 +155,5 @@ function downloadCSV() {
 </script>
 </body>
 </html>
+
 
