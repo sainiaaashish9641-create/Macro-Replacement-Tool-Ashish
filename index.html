@@ -1,186 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Macro Replacement Tool</title>
-
+<title>AdOps Macro Validator - Ashish</title>
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f3f4f6;
-  padding: 30px;
-}
-.container {
-  max-width: 950px;
-  margin: auto;
-  background: #fff;
-  padding: 25px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-h2 { margin-top: 0; }
-
-.tabs {
-  display: flex;
-  margin-bottom: 15px;
-}
-.tab {
-  flex: 1;
-  padding: 10px;
-  text-align: center;
-  cursor: pointer;
-  background: #e5e7eb;
-  border-radius: 5px;
-  margin-right: 5px;
-  font-weight: bold;
-}
-.tab:last-child { margin-right: 0; }
-.tab.active {
-  background: #2563eb;
-  color: white;
-}
-
-label { font-weight: bold; }
-textarea {
-  width: 100%;
-  padding: 10px;
-  margin: 8px 0 15px;
-}
-button {
-  width: 100%;
-  padding: 12px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 15px;
-}
-button:hover { background: #1e40af; }
-.secondary { background:#10b981; }
-.secondary:hover { background:#059669; }
-.copy { background:#f59e0b; }
-.copy:hover { background:#d97706; }
-
-.small { font-size: 13px; color:#555; margin-bottom:10px; }
+body { font-family: Arial; padding: 20px; }
+textarea { width: 100%; height: 180px; }
+button { padding: 10px 15px; margin-top: 10px; cursor: pointer; }
+pre { background: #111; color: #0f0; padding: 10px; white-space: pre-wrap; }
+.tab { display:none; }
+.tab-btn { padding: 10px; margin-right: 5px; cursor: pointer; }
+.active { background: #007bff; color: white; }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-<h2>🔁 Macro Replacement Tool</h2>
+<h2>AdOps Macro Validator Tool</h2>
 
-<div class="tabs">
-  <div class="tab active" onclick="selectTab('NASB')">NASB</div>
-  <div class="tab" onclick="selectTab('ESBO')">ESBO</div>
-  <div class="tab" onclick="selectTab('APAC')">APAC</div>
+<button class="tab-btn active" onclick="showTab('vast')">VAST</button>
+<button class="tab-btn" onclick="showTab('esbo')">ESBO</button>
+<button class="tab-btn" onclick="showTab('click')">CLICK</button>
+
+<!-- VAST TAB -->
+<div id="vast" class="tab" style="display:block;">
+<h3>VAST Macro Replacement</h3>
+<textarea id="vastInput" placeholder="Paste multiple trackers line by line"></textarea>
+<button onclick="processVAST()">Replace Macros</button>
+<pre id="vastOutput"></pre>
 </div>
 
-<p class="small" id="tabInfo">NASB selected — Timestamp replacement only</p>
+<!-- ESBO TAB -->
+<div id="esbo" class="tab">
+<h3>ESBO Macro Replacement</h3>
+<textarea id="esboInput" placeholder="Paste multiple trackers line by line"></textarea>
+<button onclick="processESBO()">Replace Macros</button>
+<pre id="esboOutput"></pre>
+</div>
 
-<label>Input URLs / Tags (One per line)</label>
-<textarea id="input" rows="8"></textarea>
-
-<label>Output</label>
-<textarea id="output" rows="8" readonly></textarea>
-
-<button onclick="replaceMacros()">Replace Macros</button>
-<button class="copy" onclick="copyOutput()">Copy Output</button>
-<button class="secondary" onclick="downloadCSV()">Download CSV</button>
+<!-- CLICK TAB -->
+<div id="click" class="tab">
+<h3>Click Macro Replacement</h3>
+<textarea id="clickInput" placeholder="Paste multiple trackers line by line"></textarea>
+<button onclick="processCLICK()">Replace Macros</button>
+<pre id="clickOutput"></pre>
 </div>
 
 <script>
-let activeTab = "NASB";
-let results = [];
-
 // TAB SWITCH
-function selectTab(tab) {
-  activeTab = tab;
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  event.target.classList.add("active");
-
-  const info = {
-    NASB: "NASB selected — Cachebuster replacement only",
-    ESBO: "ESBO selected — Cachebuster + GDPR rules",
-    APAC: "APAC selected — Cachebuster replacement only"
-  };
-  document.getElementById("tabInfo").innerText = info[tab];
+function showTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.style.display='none');
+  document.getElementById(id).style.display='block';
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
 }
 
-// MAIN FUNCTION
-function replaceMacros() {
-  const input = document.getElementById("input").value.trim();
-  if (!input) return alert("Enter tags first");
+// RANDOM MACRO REPLACEMENTS
+function replaceRandomMacros(url){
+  return url
+    .replace(/\[CACHEBUSTER\]|\[timestamp\]|\[INSERT_CACHEBREAKER_HERE\]|\[INSERT_MACRO\]|CacheBuster|cachebuster/gi, "__RANDOM_NUMBER__");
+}
 
-  const lines = input.split("\n").map(l => l.trim()).filter(Boolean);
-  results = [];
+// DYNATA ADVERTISER ID REPLACEMENT
+function replaceDynata(url){
+  return url.replace(/AdvertiserID=[^&;]+/gi, "AdvertiserID=__DEVICE_UID__");
+}
 
-  const output = lines.map(url => {
-    let replaced = url;
+// VAST PROCESS
+function processVAST(){
+  let lines = document.getElementById("vastInput").value.split("\n");
+  let output = lines.map(url=>{
+    url = replaceRandomMacros(url);
+    url = replaceDynata(url);
+    return url;
+  }).join("\n\n");
+  document.getElementById("vastOutput").textContent = output;
+}
 
-    // ================= RANDOM NUMBER MACROS (ALL TABS) =================
-    replaced = replaced.replace(/\[CACHEBUSTER\]/gi, "__RANDOM_NUMBER__");
-    replaced = replaced.replace(/\[timestamp\]|\$\{timestamp\}|%%timestamp%%/gi, "__RANDOM_NUMBER__");
-    replaced = replaced.replace(/\[INSERT_CACHEBREAKER_HERE\]/gi, "__RANDOM_NUMBER__");
-    replaced = replaced.replace(/\[INSERT_MACRO\]/gi, "__RANDOM_NUMBER__");
-    replaced = replaced.replace(/CacheBuster=[^&;]+/gi, "__RANDOM_NUMBER__");
+// CLICK PROCESS
+function processCLICK(){
+  let lines = document.getElementById("clickInput").value.split("\n");
+  let output = lines.map(url=>{
+    url = replaceRandomMacros(url);
+    url = replaceDynata(url);
+    return url;
+  }).join("\n\n");
+  document.getElementById("clickOutput").textContent = output;
+}
 
-    // DYNATA AdvertiserID replacement (ALL tabs)
-    if (/dynata/i.test(replaced)) {
-      replaced = replaced.replace(/AdvertiserID=[^&;]+/gi, "AdvertiserID=__DEVICE_UID__");
+// ESBO PROCESS
+function processESBO(){
+  let lines = document.getElementById("esboInput").value.split("\n");
+  let output = lines.map(url=>{
+    url = replaceRandomMacros(url);
+    url = replaceDynata(url);
+
+    // INSERT GDPR AFTER tfua=;
+    if(url.includes("tfua=") && !url.includes("gdpr=${GDPR};gdpr_consent=${GDPR_CONSENT_755}")){
+      url = url.replace(/tfua=([^;]*)/i, match => match + ";gdpr=${GDPR};gdpr_consent=${GDPR_CONSENT_755}");
     }
 
-    // ================= ESBO GDPR RULES =================
-    if (activeTab === "ESBO") {
-
-      // DOUBLEVERIFY → Append at END
-      if (replaced.includes("tps.doubleverify.com/visit.jpg")) {
-        if (!replaced.includes("gdpr=${GDPR}")) {
-          replaced += "&gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_126}";
-        }
-      }
-
-      // DCM → Insert after tfua=
-      if (replaced.includes("ad.doubleclick.net/ddm/")) {
-        const gdprString = "gdpr=${GDPR};gdpr_consent=${GDPR_CONSENT_755}";
-        if (!replaced.includes("gdpr=${GDPR}")) {
-          replaced = replaced.replace(/tfua=([^;]*)/i, (match, val) => {
-            return `tfua=${val};${gdprString}`;
-          });
-        }
+    // DoubleVerify Rule
+    if(url.includes("tps.doubleverify.com/visit.jpg")){
+      if(!url.includes("gdpr_consent=${GDPR_CONSENT_126}")){
+        url += "&gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_126}";
       }
     }
 
-    results.push({ original: url, replaced });
-    return replaced;
-  });
+    return url;
+  }).join("\n\n");
 
-  document.getElementById("output").value = output.join("\n");
-}
-
-// COPY BUTTON
-function copyOutput() {
-  const output = document.getElementById("output");
-  output.select();
-  document.execCommand("copy");
-  alert("Copied to clipboard");
-}
-
-// CSV EXPORT
-function downloadCSV() {
-  if (!results.length) return alert("Run replacement first");
-
-  let csv = "Original,Replaced\n";
-  results.forEach(r => {
-    csv += `"${r.original}","${r.replaced}"\n`;
-  });
-
-  const blob = new Blob([csv], { type: "text/csv" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `macro_${activeTab}.csv`;
-  link.click();
+  document.getElementById("esboOutput").textContent = output;
 }
 </script>
 
