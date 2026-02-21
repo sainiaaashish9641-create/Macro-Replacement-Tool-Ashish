@@ -101,14 +101,14 @@ function selectTab(tab) {
   event.target.classList.add("active");
 
   const info = {
-    NASB: "NASB selected — Timestamp replacement only",
-    ESBO: "ESBO selected — Timestamp + GDPR Injection",
-    APAC: "APAC selected — Timestamp replacement only"
+    NASB: "NASB selected — Cachebuster replacement only",
+    ESBO: "ESBO selected — Cachebuster + GDPR rules",
+    APAC: "APAC selected — Cachebuster replacement only"
   };
   document.getElementById("tabInfo").innerText = info[tab];
 }
 
-// MAIN REPLACEMENT LOGIC
+// MAIN FUNCTION
 function replaceMacros() {
   const input = document.getElementById("input").value.trim();
   if (!input) return alert("Enter tags first");
@@ -119,15 +119,19 @@ function replaceMacros() {
   const output = lines.map(url => {
     let replaced = url;
 
-    // TIMESTAMP (ALL tabs)
+    // ================= RANDOM NUMBER MACROS (ALL TABS) =================
+    replaced = replaced.replace(/\[CACHEBUSTER\]/gi, "__RANDOM_NUMBER__");
     replaced = replaced.replace(/\[timestamp\]|\$\{timestamp\}|%%timestamp%%/gi, "__RANDOM_NUMBER__");
+    replaced = replaced.replace(/\[INSERT_CACHEBREAKER_HERE\]/gi, "__RANDOM_NUMBER__");
+    replaced = replaced.replace(/\[INSERT_MACRO\]/gi, "__RANDOM_NUMBER__");
+    replaced = replaced.replace(/CacheBuster=[^&;]+/gi, "__RANDOM_NUMBER__");
 
     // DYNATA AdvertiserID replacement (ALL tabs)
     if (/dynata/i.test(replaced)) {
       replaced = replaced.replace(/AdvertiserID=[^&;]+/gi, "AdvertiserID=__DEVICE_UID__");
     }
 
-    // ===== ESBO ONLY GDPR RULES =====
+    // ================= ESBO GDPR RULES =================
     if (activeTab === "ESBO") {
 
       // DOUBLEVERIFY → Append at END
@@ -155,7 +159,7 @@ function replaceMacros() {
   document.getElementById("output").value = output.join("\n");
 }
 
-// COPY OUTPUT
+// COPY BUTTON
 function copyOutput() {
   const output = document.getElementById("output");
   output.select();
@@ -163,7 +167,7 @@ function copyOutput() {
   alert("Copied to clipboard");
 }
 
-// CSV DOWNLOAD
+// CSV EXPORT
 function downloadCSV() {
   if (!results.length) return alert("Run replacement first");
 
