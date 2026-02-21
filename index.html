@@ -95,6 +95,7 @@ placeholder="https://tracker.com/imp?ts=[timestamp]"></textarea>
 <textarea id="output" rows="8" readonly></textarea>
 
 <button onclick="replaceMacros()">Replace Macro</button>
+<button onclick="copyOutput()">Copy Output</button>
 <button class="secondary" onclick="downloadCSV()">Download CSV</button>
 </div>
 
@@ -105,13 +106,12 @@ let results = [];
 // TAB SWITCH
 function selectTab(tab, el) {
   activeTab = tab;
-
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   el.classList.add("active");
 
   const info = {
     NASB: "NASB selected — Timestamp macro replacement only",
-    ESBO: "ESBO selected — Timestamp + GDPR macro replacement",
+    ESBO: "ESBO selected — Timestamp + GDPR auto append for DV/DCM",
     APAC: "APAC selected — Timestamp macro replacement only"
   };
   document.getElementById("tabInfo").innerText = info[tab];
@@ -131,16 +131,24 @@ function replaceMacros() {
   const output = lines.map(url => {
     let replaced = url;
 
-    // 🔥 ALL CACHEBUSTER / TIMESTAMP MACROS
+    // Timestamp / Cachebuster macros (ALL TABS)
     replaced = replaced.replace(
       /\[timestamp\]|\[CACHEBUSTER\]|\[INSERT_CACHEBREAKER_HERE\]|\[INSERT_MACRO\]|CacheBuster|\$\{timestamp\}|%%timestamp%%|%%CACHEBUSTER%%|\[cachebuster\]/gi,
       "__RANDOM_NUMBER__"
     );
 
-    // 🔥 GDPR MACROS ONLY IN ESBO
+    // ESBO GDPR AUTO APPEND ONLY (NO Testing replacement)
     if (activeTab === "ESBO") {
-      replaced = replaced.replace(/\[gdpr\]|\$\{gdpr\}|%%gdpr%%/gi, "Testing");
-      replaced = replaced.replace(/\[gdpr_consent\]|\$\{gdpr_consent\}|%%gdpr_consent%%/gi, "Testing");
+      const gdprString = "gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_755}";
+
+      if (
+        replaced.includes("tps.doubleverify.com/visit.jpg") ||
+        replaced.includes("ad.doubleclick.net/ddm/")
+      ) {
+        if (!replaced.toLowerCase().includes("gdpr=")) {
+          replaced += (replaced.includes("?") ? "&" : "?") + gdprString;
+        }
+      }
     }
 
     results.push({ original: url, replaced });
@@ -148,6 +156,18 @@ function replaceMacros() {
   });
 
   document.getElementById("output").value = output.join("\n");
+}
+
+// COPY BUTTON
+function copyOutput() {
+  const out = document.getElementById("output");
+  if (!out.value) {
+    alert("No output to copy.");
+    return;
+  }
+  out.select();
+  document.execCommand("copy");
+  alert("Copied to clipboard!");
 }
 
 // CSV DOWNLOAD
