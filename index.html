@@ -45,6 +45,7 @@ textarea {
   width: 100%;
   padding: 10px;
   margin: 8px 0 15px;
+  font-size: 14px;
 }
 button {
   width: 100%;
@@ -55,6 +56,7 @@ button {
   border-radius: 5px;
   cursor: pointer;
   font-size: 15px;
+  margin-bottom: 10px;
 }
 button:hover { background: #1e40af; }
 button.secondary {
@@ -76,9 +78,9 @@ button.secondary:hover { background: #059669; }
 <h2>🔁 Macro Replacement Tool</h2>
 
 <div class="tabs">
-  <div class="tab active" onclick="selectTab('NASB')">NASB</div>
-  <div class="tab" onclick="selectTab('ESBO')">ESBO</div>
-  <div class="tab" onclick="selectTab('APAC')">APAC</div>
+  <div class="tab active" onclick="selectTab('NASB', this)">NASB</div>
+  <div class="tab" onclick="selectTab('ESBO', this)">ESBO</div>
+  <div class="tab" onclick="selectTab('APAC', this)">APAC</div>
 </div>
 
 <p class="small" id="tabInfo">
@@ -100,11 +102,12 @@ placeholder="https://tracker.com/imp?ts=[timestamp]"></textarea>
 let activeTab = "NASB";
 let results = [];
 
-function selectTab(tab) {
+// TAB SWITCH
+function selectTab(tab, el) {
   activeTab = tab;
 
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  event.target.classList.add("active");
+  el.classList.add("active");
 
   const info = {
     NASB: "NASB selected — Timestamp macro replacement only",
@@ -114,6 +117,7 @@ function selectTab(tab) {
   document.getElementById("tabInfo").innerText = info[tab];
 }
 
+// MAIN MACRO ENGINE
 function replaceMacros() {
   const input = document.getElementById("input").value.trim();
   if (!input) {
@@ -127,15 +131,16 @@ function replaceMacros() {
   const output = lines.map(url => {
     let replaced = url;
 
-    // Timestamp replacement (ALL tabs)
-    replaced = replaced.replace(/\[timestamp\]/gi, "__RANDOM_NUMBER__");
+    // 🔥 ALL CACHEBUSTER / TIMESTAMP MACROS
+    replaced = replaced.replace(
+      /\[timestamp\]|\[CACHEBUSTER\]|\[INSERT_CACHEBREAKER_HERE\]|\[INSERT_MACRO\]|CacheBuster|\$\{timestamp\}|%%timestamp%%|%%CACHEBUSTER%%|\[cachebuster\]/gi,
+      "__RANDOM_NUMBER__"
+    );
 
-    // GDPR replacement (ESBO only)
+    // 🔥 GDPR MACROS ONLY IN ESBO
     if (activeTab === "ESBO") {
-      replaced = replaced.replace(
-        /\[gdpr\]|\$\{gdpr\}|%%gdpr%%/gi,
-        "Testing"
-      );
+      replaced = replaced.replace(/\[gdpr\]|\$\{gdpr\}|%%gdpr%%/gi, "Testing");
+      replaced = replaced.replace(/\[gdpr_consent\]|\$\{gdpr_consent\}|%%gdpr_consent%%/gi, "Testing");
     }
 
     results.push({ original: url, replaced });
@@ -145,6 +150,7 @@ function replaceMacros() {
   document.getElementById("output").value = output.join("\n");
 }
 
+// CSV DOWNLOAD
 function downloadCSV() {
   if (!results.length) {
     alert("Replace macros before downloading CSV.");
@@ -153,7 +159,7 @@ function downloadCSV() {
 
   let csv = "Original URL,Replaced URL\n";
   results.forEach(r => {
-    csv += `"${r.original}","${r.replaced}"\n`;
+    csv += `"${r.original.replace(/"/g,'""')}","${r.replaced.replace(/"/g,'""')}"\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv" });
