@@ -1,3 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Macro Replacement Tool</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f3f4f6; padding: 30px; }
+.container { max-width: 950px; margin: auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+h2 { margin-top: 0; }
+.tabs { display: flex; margin-bottom: 15px; }
+.tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; background: #e5e7eb; border-radius: 5px; margin-right: 5px; font-weight: bold; }
+.tab:last-child { margin-right: 0; }
+.tab.active { background: #2563eb; color: white; }
+label { font-weight: bold; }
+textarea { width: 100%; padding: 10px; margin: 8px 0 15px; }
+button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 15px; }
+button:hover { background: #1e40af; }
+.secondary { background:#10b981; }
+.secondary:hover { background:#059669; }
+.copy { background:#f59e0b; }
+.copy:hover { background:#d97706; }
+.small { font-size: 13px; color:#555; margin-bottom:10px; }
+</style>
+</head>
+
+<body>
+<div class="container">
+<h2>🔁 Macro Replacement Tool</h2>
+
+<div class="tabs">
+<div class="tab active" onclick="selectTab(event,'NASB')">NASB</div>
+<div class="tab" onclick="selectTab(event,'ESBO')">ESBO</div>
+<div class="tab" onclick="selectTab(event,'APAC')">APAC</div>
+</div>
+
+<p class="small" id="tabInfo">NASB selected — Cachebuster replacement only</p>
+
+<label>Input URLs / Tags (One per line)</label>
+<textarea id="input" rows="8"></textarea>
+
+<label>Output</label>
+<textarea id="output" rows="8" readonly></textarea>
+
+<button onclick="replaceMacros()">Replace Macros</button>
+<button class="copy" onclick="copyOutput()">Copy Output</button>
+<button class="secondary" onclick="downloadCSV()">Download CSV</button>
+</div>
+
 <script>
 let activeTab = "NASB";
 let results = [];
@@ -30,7 +78,6 @@ function replaceMacros() {
     // ================= RANDOM NUMBER MACROS (ALL TABS) =================
     const randomMacros = [
       /\[CACHEBUSTER\]/gi,
-      /\[INSERT_CACHEBUSTER_HERE\]/gi,     // ✅ NEW
       /\[timestamp\]/gi,
       /\$\{timestamp\}/gi,
       /%%timestamp%%/gi,
@@ -41,9 +88,8 @@ function replaceMacros() {
     ];
     randomMacros.forEach(r => replaced = replaced.replace(r, "__RANDOM_NUMBER__"));
 
-    // CacheBuster param (case insensitive)
+    // CacheBuster param
     replaced = replaced.replace(/CacheBuster=[^&;]+/gi, "CacheBuster=__RANDOM_NUMBER__");
-    replaced = replaced.replace(/Cachebuster=[^&;]+/gi, "Cachebuster=__RANDOM_NUMBER__"); // ✅ NEW
 
     // ================= DYNATA AdvertiserID RULE (ALL TABS) =================
     if (/dynata/i.test(replaced)) {
@@ -53,19 +99,19 @@ function replaceMacros() {
     // ================= ESBO GDPR RULES =================
     if (activeTab === "ESBO") {
 
-      // DoubleVerify visit.jpg → append at END with &
+      // 1️⃣ DoubleVerify visit.jpg → append at END with &
       if (replaced.includes("tps.doubleverify.com/visit.jpg")) {
         if (!replaced.includes("gdpr=${GDPR}")) {
           replaced += "&gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_126}";
         }
       }
 
-      // DCM → insert after tfua= with ;
+      // 2️⃣ DCM tags → insert after tfua= with ;
       if (replaced.includes("ad.doubleclick.net/ddm/")) {
         const gdprString = "gdpr=${GDPR};gdpr_consent=${GDPR_CONSENT_755}";
         if (!replaced.includes("gdpr=${GDPR}")) {
           replaced = replaced.replace(/tfua=([^;]*)/i, (match, val) => {
-            return `tfua=${val};${gdprString}`;
+            return `tfua=${val};${gdprString};`;
           });
         }
       }
@@ -92,7 +138,9 @@ function downloadCSV() {
 
   let csv = "Original,Replaced\n";
   results.forEach(r => {
-    csv += `"${r.original.replace(/"/g,'""')}","${r.replaced.replace(/"/g,'""')}"\n`;
+    const o = r.original.replace(/"/g,'""');
+    const rep = r.replaced.replace(/"/g,'""');
+    csv += `"${o}","${rep}"\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv" });
@@ -102,3 +150,5 @@ function downloadCSV() {
   link.click();
 }
 </script>
+</body>
+</html>
