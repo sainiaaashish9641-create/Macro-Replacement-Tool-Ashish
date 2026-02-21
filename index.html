@@ -82,13 +82,16 @@ function replaceMacros() {
       /\$\{timestamp\}/gi,
       /%%timestamp%%/gi,
       /\[INSERT_CACHEBREAKER_HERE\]/gi,
+      /\[INSERT_CACHEBUSTER_HERE\]/gi,   // ✅ NEW
       /\[INSERT_MACRO\]/gi,
       /\[CACHBUSTER\]/gi,
-      /\[CACHE_BREAKER\]/gi
+      /\[CACHE_BREAKER\]/gi,
+      /\bCachebuster\b/gi,               // ✅ NEW
+      /\bCacheBuster\b/gi                // ✅ NEW
     ];
     randomMacros.forEach(r => replaced = replaced.replace(r, "__RANDOM_NUMBER__"));
 
-    // CacheBuster param
+    // CacheBuster param (query param)
     replaced = replaced.replace(/CacheBuster=[^&;]+/gi, "CacheBuster=__RANDOM_NUMBER__");
 
     // ================= DYNATA AdvertiserID RULE (ALL TABS) =================
@@ -99,14 +102,14 @@ function replaceMacros() {
     // ================= ESBO GDPR RULES =================
     if (activeTab === "ESBO") {
 
-      // 1️⃣ DoubleVerify visit.jpg → append at END with &
+      // DoubleVerify visit.jpg → append at END with &
       if (replaced.includes("tps.doubleverify.com/visit.jpg")) {
         if (!replaced.includes("gdpr=${GDPR}")) {
           replaced += "&gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_126}";
         }
       }
 
-      // 2️⃣ DCM tags → insert after tfua= with ;
+      // DCM → insert after tfua= with ;
       if (replaced.includes("ad.doubleclick.net/ddm/")) {
         const gdprString = "gdpr=${GDPR};gdpr_consent=${GDPR_CONSENT_755}";
         if (!replaced.includes("gdpr=${GDPR}")) {
@@ -152,4 +155,3 @@ function downloadCSV() {
 </script>
 </body>
 </html>
-
