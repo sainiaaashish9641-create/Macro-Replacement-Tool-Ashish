@@ -79,9 +79,6 @@ button:hover { background: #1e40af; }
 
 <p class="small" id="tabInfo">NASB selected — Timestamp replacement only</p>
 
-<label>Bulk Upload (.txt)</label>
-<input type="file" id="fileInput" accept=".txt"><br><br>
-
 <label>Input URLs / Tags (One per line)</label>
 <textarea id="input" rows="8"></textarea>
 
@@ -111,21 +108,10 @@ function selectTab(tab) {
   document.getElementById("tabInfo").innerText = info[tab];
 }
 
-// BULK FILE LOAD
-document.getElementById("fileInput").addEventListener("change", function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById("input").value = e.target.result;
-  };
-  reader.readAsText(file);
-});
-
-// MAIN LOGIC
+// MAIN REPLACEMENT LOGIC
 function replaceMacros() {
   const input = document.getElementById("input").value.trim();
-  if (!input) return alert("Enter tags or upload file");
+  if (!input) return alert("Enter tags first");
 
   const lines = input.split("\n").map(l => l.trim()).filter(Boolean);
   results = [];
@@ -133,23 +119,32 @@ function replaceMacros() {
   const output = lines.map(url => {
     let replaced = url;
 
-    // Timestamp replacement ALL tabs
+    // TIMESTAMP (ALL tabs)
     replaced = replaced.replace(/\[timestamp\]|\$\{timestamp\}|%%timestamp%%/gi, "__RANDOM_NUMBER__");
 
-    // ESBO GDPR Injection Logic
+    // DYNATA AdvertiserID replacement (ALL tabs)
+    if (/dynata/i.test(replaced)) {
+      replaced = replaced.replace(/AdvertiserID=[^&;]+/gi, "AdvertiserID=__DEVICE_UID__");
+    }
+
+    // ===== ESBO ONLY GDPR RULES =====
     if (activeTab === "ESBO") {
-      const isDV = replaced.includes("tps.doubleverify.com/visit.jpg");
-      const isDCM = replaced.includes("ad.doubleclick.net/ddm/");
 
-      let GDPR_STRING = "";
-      if (isDV) GDPR_STRING = "gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_126}";
-      if (isDCM) GDPR_STRING = "gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_755}";
+      // DOUBLEVERIFY → Append at END
+      if (replaced.includes("tps.doubleverify.com/visit.jpg")) {
+        if (!replaced.includes("gdpr=${GDPR}")) {
+          replaced += "&gdpr=${GDPR}&gdpr_consent=${GDPR_CONSENT_126}";
+        }
+      }
 
-      // Insert ONLY if tfua exists and GDPR not already present
-      if (GDPR_STRING && !replaced.includes("gdpr=${GDPR}")) {
-        replaced = replaced.replace(/tfua=([^;]*)/i, (match, val) => {
-          return `tfua=${val};${GDPR_STRING}`;
-        });
+      // DCM → Insert after tfua=
+      if (replaced.includes("ad.doubleclick.net/ddm/")) {
+        const gdprString = "gdpr=${GDPR};gdpr_consent=${GDPR_CONSENT_755}";
+        if (!replaced.includes("gdpr=${GDPR}")) {
+          replaced = replaced.replace(/tfua=([^;]*)/i, (match, val) => {
+            return `tfua=${val};${gdprString}`;
+          });
+        }
       }
     }
 
@@ -160,7 +155,7 @@ function replaceMacros() {
   document.getElementById("output").value = output.join("\n");
 }
 
-// COPY BUTTON
+// COPY OUTPUT
 function copyOutput() {
   const output = document.getElementById("output");
   output.select();
