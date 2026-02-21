@@ -95,7 +95,7 @@ function replaceMacros() {
     replaced = replaced.replace(/CacheBuster=[^&;]+/gi, "CacheBuster=__RANDOM_NUMBER__");
 
     // ================= DYNATA AdvertiserID RULE (ALL TABS) =================
-      replaced = replaced.replace(/AdvertiserID=[^&;]+/gi, "AdvertiserID=__DEVICE_UID__");
+      replaced = replaced.replace(/AdvertiserID=[^&;]+/gi, "__DEVICE_UID__");
 
     // ================= ESBO GDPR RULES =================
     if (activeTab === "ESBO") {
@@ -153,6 +153,7 @@ function downloadCSV() {
 </script>
 </body>
 </html>
+
 
 
 
